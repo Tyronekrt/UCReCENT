@@ -1,0 +1,56 @@
+name: Deploy to cPanel VPS
+
+# Auto-deploy: every push/merge to main redeploys frontend + backend.
+# Manual trigger also available (Actions -> Deploy to cPanel VPS -> Run workflow).
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+# Never run two deploys at once (second waits for first — avoids half-written builds)
+concurrency:
+  group: cpanel-deploy
+  cancel-in-progress: false
+
+jobs:
+  # Safety gate: only deploy if CI passed on this commit
+  ci-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+  deploy:
+    needs: [ci-gate]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH (isolated to ~/ucrecent)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USER }}
+          key: ${{ secrets.CPANEL_SSH_KEY }}
+          port: ${{ secrets.CPANEL_PORT || 22 }}
+          envs: NEXT_PUBLIC_SITE_URL,NEXT_PUBLIC_API_URL
+          script: |
+            export APP_ROOT="$HOME/ucrecent"
+            export NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL }}"
+            export NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
+            bash "$HOME/ucrecent/scripts/cpanel-deploy.sh"
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
