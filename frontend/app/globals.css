@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  @apply bg-white font-sans text-slate-800 antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer components {
+  /* Wide-but-bounded page gutter: full-bleed bands stretch edge to edge,
+     inner content stays readable on laptop screens. */
+  .container-x {
+    @apply mx-auto w-full max-w-container px-4 sm:px-6 lg:px-10;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-sun text-navy shadow-sm hover:bg-sun-light hover:shadow focus-visible:ring-sun;
+  }
+  .btn-secondary {
+    @apply btn bg-navy text-white shadow-sm hover:bg-navy-light focus-visible:ring-navy;
+  }
+  .btn-outline {
+    @apply btn border border-navy/25 bg-white text-navy hover:border-navy hover:bg-cream;
+  }
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(7,56,108,0.05)];
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-forest;
+  }
+  .eyebrow::before {
+    content: "";
+    @apply inline-block h-px w-6 bg-forest/60;
+  }
+  /* Centered hero eyebrow: flanking rules on both sides for even balance. */
+  .eyebrow-center::after {
+    content: "";
+    @apply inline-block h-px w-6 bg-forest/60;
+  }
+  .h-display {
+    @apply text-[2rem] font-extrabold leading-[1.08] tracking-tight text-navy sm:text-5xl lg:text-[3.4rem];
+  }
+  .h-section {
+    @apply text-[1.55rem] font-bold leading-snug tracking-tight text-navy sm:text-3xl;
+  }
+  .lead {
+    @apply max-w-3xl text-[1.05rem] leading-relaxed text-slate-600 sm:text-lg;
+  }
+  .prose-block {
+    @apply max-w-3xl space-y-4 text-[0.95rem] leading-relaxed text-slate-700;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-lake focus:outline-none focus:ring-2 focus:ring-lake/30;
+  }
+  .label {
+    @apply mb-1 block text-sm font-semibold text-slate-700;
+  }
+  .status-pill {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+  /* Full-bleed modern hero band */
+  .hero-band {
+    background:
+      radial-gradient(60rem 24rem at 85% -10%, rgba(255, 193, 7, 0.22), transparent 60%),
+      radial-gradient(50rem 26rem at -10% 10%, rgba(22, 140, 203, 0.14), transparent 55%),
+      linear-gradient(180deg, #fdf8ee 0%, #ffffff 100%);
+  }
+  .section-band {
+    @apply py-12 sm:py-16;
+  }
+}

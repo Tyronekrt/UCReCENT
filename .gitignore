@@ -1,0 +1,47 @@
+# Environment & secrets (never commit)
+.env
+.env.local
+.env*.local
+*.pem
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Backend
+backend/__pycache__/
+backend/*/__pycache__/
+backend/*/*/__pycache__/
+backend/*.sqlite3
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+venv/
+.venv/
+
+# Python
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs & local artifacts
+*.log
+
+# Word documents (never commit - local drafts only)
+*.doc
+*.docx
+*.docm
+*.dotx
+~$*.doc*
+
+# WhatsApp media folder (images - never commit)
+WhatsApp Unknown 2026-09-30 at 14.29.38/
+WhatsApp*/
