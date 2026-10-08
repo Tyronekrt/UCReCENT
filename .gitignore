@@ -45,3 +45,5 @@ Thumbs.db
 # WhatsApp media folder (images - never commit)
 WhatsApp Unknown 2026-09-30 at 14.29.38/
 WhatsApp*/
+
+frontend/tsconfig.tsbuildinfo
