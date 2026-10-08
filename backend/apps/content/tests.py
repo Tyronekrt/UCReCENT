@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
@@ -144,3 +145,48 @@ class AdminBoundaryTests(APITestCase):
         # Anonymous users are redirected to the login page, never served the admin.
         self.assertEqual(res.status_code, 302)
         self.assertIn("/admin/login/", res["Location"])
+
+
+class AdminApiSessionTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="adminuser",
+            password="StrongPass123!",
+            is_staff=True,
+            is_superuser=True,
+        )
+
+    def test_login_requires_valid_staff_account(self):
+        res = self.client.post(
+            "/api/admin/login/",
+            {"username": "adminuser", "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["username"], "adminuser")
+
+        me = self.client.get("/api/admin/me/", follow=False)
+        self.assertEqual(me.status_code, 200)
+        self.assertEqual(me.data["username"], "adminuser")
+
+    def test_login_rejects_non_staff_or_invalid_credentials(self):
+        invalid = self.client.post(
+            "/api/admin/login/",
+            {"username": "adminuser", "password": "wrong-password"},
+            format="json",
+        )
+        self.assertEqual(invalid.status_code, 401)
+
+        regular = get_user_model().objects.create_user(username="normal", password="pass123")
+        regular_login = self.client.post(
+            "/api/admin/login/",
+            {"username": "normal", "password": "pass123"},
+            format="json",
+        )
+        self.assertEqual(regular_login.status_code, 403)
+
+    def test_logout_clears_session(self):
+        self.client.force_login(self.user)
+        res = self.client.post("/api/admin/logout/", format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["status"], "logged_out")

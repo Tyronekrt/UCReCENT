@@ -3,6 +3,64 @@ from rest_framework import serializers
 from .models import GalleryImage, ImpactStatistic, Partner, Project, ProjectUpdate
 
 
+class AdminProjectUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectUpdate
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "excerpt",
+            "content",
+            "cover",
+            "cover_image",
+            "cover_alt",
+            "category",
+            "author",
+            "published",
+            "published_date",
+        ]
+
+
+class AdminPartnerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Partner
+        fields = [
+            "id",
+            "name",
+            "description",
+            "logo",
+            "website",
+            "category",
+            "status",
+            "status_note",
+            "order",
+            "is_active",
+        ]
+
+
+class AdminGalleryImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GalleryImage
+        fields = [
+            "id",
+            "title",
+            "image",
+            "image_path",
+            "caption",
+            "category",
+            "alt_text",
+            "order",
+            "is_active",
+        ]
+
+
+class AdminImpactStatisticSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImpactStatistic
+        fields = ["id", "label", "value", "description", "order", "is_active"]
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     location_full = serializers.ReadOnlyField()
 

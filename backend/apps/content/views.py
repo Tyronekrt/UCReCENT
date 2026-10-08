@@ -1,10 +1,15 @@
+from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 
 from .models import GalleryImage, ImpactStatistic, Partner, Project, ProjectUpdate
 from .serializers import (
+    AdminGalleryImageSerializer,
+    AdminImpactStatisticSerializer,
+    AdminPartnerSerializer,
+    AdminProjectUpdateSerializer,
     GalleryImageSerializer,
     ImpactStatisticSerializer,
     PartnerSerializer,
@@ -77,6 +82,116 @@ class ApiRootView(generics.GenericAPIView):
                 "contact": f"{base}/api/contact/",
             }
         )
+
+
+class AdminLoginView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request, *args, **kwargs):
+        username = (request.data.get("username") or "").strip()
+        password = request.data.get("password") or ""
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            return Response({"detail": "Invalid username or password."}, status=status.HTTP_401_UNAUTHORIZED)
+        if not user.is_active or not user.is_staff:
+            return Response({"detail": "This account is not allowed to manage the site."}, status=status.HTTP_403_FORBIDDEN)
+        login(request, user)
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminMeView(generics.GenericAPIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                "id": request.user.id,
+                "username": request.user.username,
+                "is_staff": request.user.is_staff,
+                "is_superuser": request.user.is_superuser,
+            }
+        )
+
+
+class AdminLogoutView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        logout(request)
+        return Response({"status": "logged_out"}, status=status.HTTP_200_OK)
+
+
+class AdminContentOverviewView(generics.GenericAPIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        project = Project.objects.filter(is_active=True).first()
+        return Response(
+            {
+                "project": ProjectSerializer(project).data if project else None,
+                "updates": AdminProjectUpdateSerializer(ProjectUpdate.objects.order_by("-published_date", "-created_at"), many=True).data,
+                "partners": AdminPartnerSerializer(Partner.objects.order_by("order", "name"), many=True).data,
+                "gallery": AdminGalleryImageSerializer(GalleryImage.objects.order_by("order", "id"), many=True).data,
+                "impact": AdminImpactStatisticSerializer(ImpactStatistic.objects.order_by("order", "id"), many=True).data,
+            }
+        )
+
+
+class AdminProjectUpdateListView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = ProjectUpdate.objects.order_by("-published_date", "-created_at")
+    serializer_class = AdminProjectUpdateSerializer
+
+
+class AdminProjectUpdateDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = ProjectUpdate.objects.all()
+    serializer_class = AdminProjectUpdateSerializer
+
+
+class AdminPartnerListView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Partner.objects.order_by("order", "name")
+    serializer_class = AdminPartnerSerializer
+
+
+class AdminPartnerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Partner.objects.all()
+    serializer_class = AdminPartnerSerializer
+
+
+class AdminGalleryImageListView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = GalleryImage.objects.order_by("order", "id")
+    serializer_class = AdminGalleryImageSerializer
+
+
+class AdminGalleryImageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = GalleryImage.objects.all()
+    serializer_class = AdminGalleryImageSerializer
+
+
+class AdminImpactStatisticListView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = ImpactStatistic.objects.order_by("order", "id")
+    serializer_class = AdminImpactStatisticSerializer
+
+
+class AdminImpactStatisticDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = ImpactStatistic.objects.all()
+    serializer_class = AdminImpactStatisticSerializer
 
 
 # Backwards-compatible aliases for the earlier V1 frontend paths
