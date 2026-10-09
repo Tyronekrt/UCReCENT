@@ -168,3 +168,22 @@ class ImpactStatistic(models.Model):
 
     def __str__(self) -> str:
         return f"{self.value} — {self.label}"
+
+class Person(models.Model):
+    """Leadership or team member profile shown on the public about page."""
+
+    name = models.CharField(max_length=200)
+    role = models.CharField(max_length=120)
+    organization = models.CharField(max_length=200, blank=True)
+    bio = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "name"]
+        indexes = [models.Index(fields=["is_active", "order"]) ]
+
+    def __str__(self) -> str:
+        return f"{self.name} — {self.role}"

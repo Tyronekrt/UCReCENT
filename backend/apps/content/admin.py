@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import GalleryImage, ImpactStatistic, Partner, Project, ProjectUpdate
+from .models import GalleryImage, ImpactStatistic, Partner, Person, Project, ProjectUpdate
 
 
 @admin.register(Project)
@@ -140,5 +140,19 @@ class ImpactStatisticAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         ("Statistic", {"fields": ("label", "value", "description")}),
+        ("Display", {"fields": ("order", "is_active", "created_at", "updated_at")}),
+    )
+
+
+@admin.register(Person)
+class PersonAdmin(admin.ModelAdmin):
+    list_display = ("name", "role", "organization", "order", "is_active", "updated_at")
+    list_filter = ("is_active", "organization")
+    search_fields = ("name", "role", "organization", "bio")
+    ordering = ("order", "name")
+    list_editable = ("order", "is_active")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Profile", {"fields": ("name", "role", "organization", "bio")}),
         ("Display", {"fields": ("order", "is_active", "created_at", "updated_at")}),
     )

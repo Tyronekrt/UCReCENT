@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import GalleryImage, ImpactStatistic, Partner, Project, ProjectUpdate
+from .models import GalleryImage, ImpactStatistic, Partner, Person, Project, ProjectUpdate
 
 
 class AdminProjectUpdateSerializer(serializers.ModelSerializer):
@@ -59,6 +59,12 @@ class AdminImpactStatisticSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImpactStatistic
         fields = ["id", "label", "value", "description", "order", "is_active"]
+
+
+class AdminPersonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Person
+        fields = ["id", "name", "role", "organization", "bio", "order", "is_active"]
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -178,3 +184,9 @@ class ImpactStatisticSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImpactStatistic
         fields = ["label", "value", "description", "order"]
+
+
+class PersonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Person
+        fields = ["name", "role", "organization", "bio", "order"]

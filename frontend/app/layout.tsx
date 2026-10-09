@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import SiteShell from "@/components/layout/SiteShell";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -58,9 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to main content
         </a>
-        <Header />
-        <main id="main">{children}</main>
-        <Footer />
+        <SiteShell>{children}</SiteShell>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

@@ -1,18 +1,23 @@
 from django.contrib.auth import authenticate, login, logout
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import GalleryImage, ImpactStatistic, Partner, Project, ProjectUpdate
+from apps.enquiries.serializers import AdminContactMessageSerializer, AdminSupportRequestSerializer
+
+from .models import GalleryImage, ImpactStatistic, Partner, Person, Project, ProjectUpdate
 from .serializers import (
     AdminGalleryImageSerializer,
     AdminImpactStatisticSerializer,
     AdminPartnerSerializer,
+    AdminPersonSerializer,
     AdminProjectUpdateSerializer,
     GalleryImageSerializer,
     ImpactStatisticSerializer,
     PartnerSerializer,
+    PersonSerializer,
     ProjectSerializer,
     ProjectUpdateSerializer,
 )
@@ -63,6 +68,25 @@ class ImpactStatisticListView(generics.ListAPIView):
         return ImpactStatistic.objects.filter(is_active=True)
 
 
+class PersonListView(generics.ListAPIView):
+    serializer_class = PersonSerializer
+
+    def get_queryset(self):
+        return Person.objects.filter(is_active=True)
+
+
+class AdminPersonListView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Person.objects.order_by("order", "name")
+    serializer_class = AdminPersonSerializer
+
+
+class AdminPersonDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Person.objects.all()
+    serializer_class = AdminPersonSerializer
+
+
 class ApiRootView(generics.GenericAPIView):
     """Discoverable index of public endpoints."""
 
@@ -78,6 +102,7 @@ class ApiRootView(generics.GenericAPIView):
                 "updates": f"{base}/api/updates/",
                 "gallery": f"{base}/api/gallery/",
                 "impact": f"{base}/api/impact/",
+                "people": f"{base}/api/people/",
                 "support": f"{base}/api/support/",
                 "contact": f"{base}/api/contact/",
             }
@@ -122,6 +147,15 @@ class AdminMeView(generics.GenericAPIView):
         )
 
 
+class AdminCsrfView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, *args, **kwargs):
+        get_token(request)
+        return Response({"detail": "CSRF cookie set."}, status=status.HTTP_200_OK)
+
+
 class AdminLogoutView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -135,6 +169,8 @@ class AdminContentOverviewView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         project = Project.objects.filter(is_active=True).first()
+        from apps.enquiries.models import ContactMessage, SupportRequest
+
         return Response(
             {
                 "project": ProjectSerializer(project).data if project else None,
@@ -142,6 +178,9 @@ class AdminContentOverviewView(generics.GenericAPIView):
                 "partners": AdminPartnerSerializer(Partner.objects.order_by("order", "name"), many=True).data,
                 "gallery": AdminGalleryImageSerializer(GalleryImage.objects.order_by("order", "id"), many=True).data,
                 "impact": AdminImpactStatisticSerializer(ImpactStatistic.objects.order_by("order", "id"), many=True).data,
+                "people": AdminPersonSerializer(Person.objects.order_by("order", "name"), many=True).data,
+                "support_requests": AdminSupportRequestSerializer(SupportRequest.objects.order_by("-created_at"), many=True).data,
+                "contact_messages": AdminContactMessageSerializer(ContactMessage.objects.order_by("-created_at"), many=True).data,
             }
         )
 

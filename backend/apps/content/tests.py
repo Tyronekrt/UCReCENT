@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from .models import GalleryImage, ImpactStatistic, Partner, Project, ProjectUpdate
+from .models import GalleryImage, ImpactStatistic, Partner, Person, Project, ProjectUpdate
 
 
 def make_update(**kwargs):
@@ -77,6 +77,15 @@ class ImpactStatisticModelTests(TestCase):
         self.assertEqual(str(stats[0]), "1 — A")
 
 
+class PersonModelTests(TestCase):
+    def test_str_and_ordering(self):
+        Person.objects.create(name="Dr. Benard Oloo", role="Director", organization="UCReCENT", order=2)
+        Person.objects.create(name="Pastor Paul Misaki", role="Board member", organization="Community", order=1)
+        people = list(Person.objects.all())
+        self.assertEqual([p.name for p in people], ["Pastor Paul Misaki", "Dr. Benard Oloo"])
+        self.assertEqual(str(people[0]), "Pastor Paul Misaki — Board member")
+
+
 class PublicApiTests(APITestCase):
     def setUp(self):
         self.published = make_update()
@@ -87,6 +96,8 @@ class PublicApiTests(APITestCase):
         GalleryImage.objects.create(image="g/2.jpg", caption="Two", alt_text="alt", is_active=False)
         ImpactStatistic.objects.create(label="Books", value="10,000")
         ImpactStatistic.objects.create(label="Hidden", value="0", is_active=False)
+        Person.objects.create(name="Dr. Benard Oloo", role="Director", organization="UCReCENT", order=1)
+        Person.objects.create(name="Hidden Person", role="Board member", organization="Community", is_active=False, order=2)
         Project.objects.create(
             name="Usao Community Library", tagline="t", description="d",
             vision="v", mission="m", goal="g",
@@ -123,6 +134,11 @@ class PublicApiTests(APITestCase):
     def test_impact_only_active(self):
         res = self.client.get("/api/impact/")
         self.assertEqual([s["label"] for s in res.data], ["Books"])
+
+    def test_people_only_active(self):
+        res = self.client.get("/api/people/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual([p["name"] for p in res.data], ["Dr. Benard Oloo"])
 
     def test_project_returns_active(self):
         res = self.client.get("/api/project/")
@@ -190,3 +206,33 @@ class AdminApiSessionTests(APITestCase):
         res = self.client.post("/api/admin/logout/", format="json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["status"], "logged_out")
+
+    def test_overview_includes_people_and_submission_lists(self):
+        from apps.enquiries.models import ContactMessage, SupportRequest
+
+        SupportRequest.objects.create(
+            name="Jane Doe",
+            email="jane@example.com",
+            organization="Example Org",
+            support_type="Books",
+            message="Need books for the library.",
+            status="new",
+        )
+        ContactMessage.objects.create(
+            name="John Doe",
+            email="john@example.com",
+            subject="Question",
+            message="I would like to ask about the library.",
+            status="new",
+        )
+        Person.objects.create(name="Dr. Benard Oloo", role="Director", organization="UCReCENT", order=1)
+
+        self.client.force_login(self.user)
+        res = self.client.get("/api/admin/overview/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("people", res.data)
+        self.assertIn("support_requests", res.data)
+        self.assertIn("contact_messages", res.data)
+        self.assertEqual(len(res.data["people"]), 1)
+        self.assertEqual(len(res.data["support_requests"]), 1)
+        self.assertEqual(len(res.data["contact_messages"]), 1)
