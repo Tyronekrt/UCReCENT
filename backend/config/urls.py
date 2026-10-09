@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.shortcuts import redirect
 from django.urls import include, path
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -11,7 +12,12 @@ def health(_request):
     return Response({"status": "ok", "service": "usao-library-api", "version": "1.0.0"})
 
 
+def root_view(request):
+    return redirect("/api/")
+
+
 urlpatterns = [
+    path("", root_view, name="root"),
     path("admin/", admin.site.urls),
     path("api/health/", health),
     # Canonical V1 API

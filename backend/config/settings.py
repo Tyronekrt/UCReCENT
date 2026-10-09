@@ -3,19 +3,24 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("SECRET_KEY", "")
-if not SECRET_KEY:
-    if os.getenv("DEBUG", "False") == "True":
-        SECRET_KEY = "dev-only-insecure-key"
-    else:
-        raise RuntimeError("SECRET_KEY must be set in production (see .env.example).")
+# Production config is the canonical source for deployment. Local dev overrides are
+# opt-in and never silently override production values.
+load_dotenv(BASE_DIR / ".env")
+if os.getenv("APP_ENV") == "development" or os.getenv("USE_LOCAL_ENV", "").lower() == "true":
+    load_dotenv(BASE_DIR / ".env.local")
 
-DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY must be set in the production environment.")
+
+DEBUG = os.getenv("DEBUG", "False").strip().lower() in {"1", "true", "yes", "on"}
+ALLOWED_HOSTS = [
+    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
+]
+if not ALLOWED_HOSTS:
+    raise RuntimeError("ALLOWED_HOSTS must be set in the production environment.")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -61,19 +66,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# PostgreSQL is the production database. Configure via POSTGRES_* (see .env.example).
+# PostgreSQL is the production database. Configure via POSTGRES_* in the live env.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "usao_library"),
-        "USER": os.getenv("POSTGRES_USER", "usao"),
-        "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": os.getenv("POSTGRES_DB", "").strip(),
+        "USER": os.getenv("POSTGRES_USER", "").strip(),
+        "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1").strip(),
+        "PORT": os.getenv("POSTGRES_PORT", "5432").strip(),
         "OPTIONS": {"connect_timeout": 5},
     }
 }
-# Only set the password key when a non-empty POSTGRES_PASSWORD is provided.
-_pg_password = os.getenv("POSTGRES_PASSWORD", "")
+if not DATABASES["default"]["NAME"] or not DATABASES["default"]["USER"]:
+    raise RuntimeError("POSTGRES_DB and POSTGRES_USER must be set in the production environment.")
+_pg_password = os.getenv("POSTGRES_PASSWORD", "").strip()
 if _pg_password:
     DATABASES["default"]["PASSWORD"] = _pg_password
 
@@ -110,29 +116,45 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
-    if o.strip()
+    o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
 ]
 CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
 ]
+if not CORS_ALLOWED_ORIGINS:
+    raise RuntimeError("CORS_ALLOWED_ORIGINS must be set in the production environment.")
+if not CSRF_TRUSTED_ORIGINS:
+    raise RuntimeError("CSRF_TRUSTED_ORIGINS must be set in the production environment.")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+# Frontend and API are split across different domains in production and often
+# across different ports in local development, so cross-site session and CSRF
+# cookies must be explicitly allowed for authenticated admin actions.
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
-# Email provider configuration (SMTP by default; console backend for local dev).
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False") == "True"
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@usaolibrary.example.org")
-NOTIFICATION_EMAIL = os.getenv("NOTIFICATION_EMAIL", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").rstrip("/")
+if not FRONTEND_URL:
+    raise RuntimeError("FRONTEND_URL must be set in the production environment.")
+
+# Email provider configuration. Production defaults to SMTP and does not fall back to localhost.
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").strip()
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() in {"1", "true", "yes", "on"}
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").strip().lower() in {"1", "true", "yes", "on"}
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
+NOTIFICATION_EMAIL = os.getenv("NOTIFICATION_EMAIL", "").strip()
 NOTIFICATION_EXTRA_EMAILS = [
     e.strip() for e in os.getenv("NOTIFICATION_EXTRA_EMAILS", "").split(",") if e.strip()
 ]
+if not DEFAULT_FROM_EMAIL:
+    raise RuntimeError("DEFAULT_FROM_EMAIL must be set in the production environment.")
+if not NOTIFICATION_EMAIL:
+    raise RuntimeError("NOTIFICATION_EMAIL must be set in the production environment.")
 
 # Security hardening (X-Frame-Options set here; content-type and referrer headers
 # are additionally set by the frontend in next.config.mjs)

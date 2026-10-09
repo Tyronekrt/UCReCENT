@@ -54,23 +54,109 @@ export type AdminImpactStat = {
   is_active: boolean;
 };
 
+export type AdminPerson = {
+  id: number;
+  name: string;
+  role: string;
+  organization: string;
+  bio: string;
+  order: number;
+  is_active: boolean;
+};
+
+export type AdminSupportRequest = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  organization: string;
+  support_type: string;
+  amount: string;
+  message: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminContactMessage = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AdminOverview = {
   project: Record<string, unknown> | null;
   updates: AdminUpdate[];
   partners: AdminPartner[];
   gallery: AdminGalleryImage[];
   impact: AdminImpactStat[];
+  people: AdminPerson[];
+  support_requests: AdminSupportRequest[];
+  contact_messages: AdminContactMessage[];
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+function resolveApiBase(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
+
+  if (configured) {
+    return configured;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL must be configured for production."
+    );
+  }
+
+  return "http://127.0.0.1:8000";
+}
+
+const API_BASE = resolveApiBase();
 
 export function adminApiConfigured(): boolean {
   return API_BASE.length > 0;
 }
 
+async function ensureCsrfToken(): Promise<void> {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const currentToken = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1];
+  if (currentToken) {
+    return;
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/csrf/`, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to initialize the admin session.");
+  }
+
+  const nextToken = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1];
+  if (!nextToken) {
+    throw new Error("CSRF token was not created by the server.");
+  }
+}
+
 async function requestAdmin<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!adminApiConfigured()) {
     throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+  }
+
+  const method = (init.method ?? "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    await ensureCsrfToken();
   }
 
   const headers = new Headers(init.headers ?? {});
@@ -132,10 +218,23 @@ export function fetchAdminOverview(): Promise<AdminOverview> {
   return requestAdmin<AdminOverview>("/api/admin/overview/");
 }
 
+export function createAdminRecord<T>(path: string, payload: Partial<T>): Promise<T> {
+  return requestAdmin<T>(path, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateAdminRecord<T>(path: string, payload: Partial<T>): Promise<T> {
   return requestAdmin<T>(path, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminRecord<T>(path: string): Promise<T> {
+  return requestAdmin<T>(path, {
+    method: "DELETE",
   });
 }
 

@@ -72,6 +72,24 @@ class SupportRequestSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class AdminSupportRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SupportRequest
+        fields = [
+            "id",
+            "name",
+            "email",
+            "phone",
+            "organization",
+            "support_type",
+            "amount",
+            "message",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+
+
 class ContactMessageSerializer(serializers.ModelSerializer):
     website = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
@@ -92,3 +110,9 @@ class ContactMessageSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         attrs.pop("website", None)
         return attrs
+
+
+class AdminContactMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = ["id", "name", "email", "phone", "subject", "message", "status", "created_at", "updated_at"]
